@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sperling Hansen — Voice Project Lookup</title>
+<style>
+/* ============================================================
+   BRAND SWAP POINTS — replace these tokens with real SH values.
+   Everything below is placeholder styling built to be dropped in.
+   ============================================================ */
+:root {
+  --ink: #1b2422;
+  --ink-soft: #445350;
+  --ground: #f1ede4;
+  --panel: #e7e1d2;
+  --panel-border: #cec5ae;
+  --accent: #d9631a;      /* survey-stake orange — swap for SH accent */
+  --accent-ink: #ffffff;
+  --strata: #4c6b6f;      /* structural blue-grey */
+  --confidence: #5c7a52;  /* semantic — separate from brand accent */
+  --shadow: 0 1px 0 rgba(27,36,34,0.06);
+  --radius-sm: 3px;
+  --radius-md: 5px;
+  --font-display: 'Helvetica Neue', Arial, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SFMono-Regular', 'Cascadia Mono', 'Roboto Mono', ui-monospace, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #e9e4d8;
+    --ink-soft: #a7b5b0;
+    --ground: #12181a;
+    --panel: #1a2224;
+    --panel-border: #2c3638;
+    --accent: #e8752c;
+    --accent-ink: #12181a;
+    --strata: #6f9195;
+    --confidence: #7fa86f;
+    --shadow: 0 1px 0 rgba(0,0,0,0.3);
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #e9e4d8; --ink-soft: #a7b5b0; --ground: #12181a; --panel: #1a2224;
+  --panel-border: #2c3638; --accent: #e8752c; --accent-ink: #12181a;
+  --strata: #6f9195; --confidence: #7fa86f; --shadow: 0 1px 0 rgba(0,0,0,0.3);
+}
+:root[data-theme="light"] {
+  --ink: #1b2422; --ink-soft: #445350; --ground: #f1ede4; --panel: #e7e1d2;
+  --panel-border: #cec5ae; --accent: #d9631a; --accent-ink: #ffffff;
+  --strata: #4c6b6f; --confidence: #5c7a52; --shadow: 0 1px 0 rgba(27,36,34,0.06);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+#topoCanvas {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  opacity: 0.35; pointer-events: none; z-index: 0;
+}
+.app {
+  position: relative; z-index: 1;
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  max-width: 1180px; margin: 0 auto;
+  padding: 28px 32px 48px;
+}
+
+/* ---------- Masthead ---------- */
+.masthead {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-bottom: 22px; border-bottom: 1px solid var(--panel-border);
+  gap: 16px; flex-wrap: wrap;
+}
+.wordmark { display: flex; align-items: center; gap: 14px; }
+.mark {
+  width: 44px; height: 44px; flex: none;
+  background: var(--accent); color: var(--accent-ink);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display); font-weight: 700; font-size: 16px;
+  letter-spacing: 0.5px; border-radius: var(--radius-sm);
+}
+.wordmark-text { display: flex; flex-direction: column; line-height: 1.3; }
+.name {
+  font-family: var(--font-display); font-weight: 700; font-size: 19px;
+  letter-spacing: 2.5px;
+}
+.tagline {
+  font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 1.2px;
+  color: var(--ink-soft); text-transform: uppercase;
+}
+.status-pill {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.4px;
+  color: var(--ink-soft); text-transform: uppercase;
+  padding: 7px 12px; border: 1px solid var(--panel-border); border-radius: 999px;
+}
+.status-pill .dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--ink-soft);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.status-pill.live .dot {
+  background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.status-pill.live #statusText { color: var(--accent); }
+
+/* ---------- Console layout ---------- */
+.console {
+  display: grid; grid-template-columns: 360px 1fr; gap: 28px;
+  margin-top: 28px; flex: 1; align-items: start;
+}
+@media (max-width: 860px) { .console { grid-template-columns: 1fr; } }
+
+.eyebrow {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px;
+  color: var(--ink-soft); text-transform: uppercase; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.eyebrow .count {
+  color: var(--ink); background: var(--panel); border: 1px solid var(--panel-border);
+  padding: 1px 7px; border-radius: 999px; font-weight: 600;
+}
+
+/* ---------- Input panel ---------- */
+.input-panel {
+  background: var(--panel); border: 1px solid var(--panel-border);
+  border-radius: var(--radius-md); padding: 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 18px;
+}
+.dial-wrap { position: relative; width: 148px; height: 148px; }
+.dial-ticks {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+}
+.listen-btn {
+  position: absolute; inset: 18px;
+  border-radius: 50%; border: 1.5px solid var(--panel-border);
+  background: var(--ground); color: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: border-color 0.15s, transform 0.1s;
+}
+.listen-btn:hover { border-color: var(--accent); }
+.listen-btn:active { transform: scale(0.97); }
+.listen-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.listen-btn svg { width: 30px; height: 30px; }
+.listen-btn.live { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.pulse-ring {
+  position: absolute; inset: 18px; border-radius: 50%;
+  border: 1.5px solid var(--accent); opacity: 0; pointer-events: none;
+}
+.listen-btn.live ~ .pulse-ring { animation: pulse 1.6s ease-out infinite; }
+@keyframes pulse {
+  0% { opacity: 0.55; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.55); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .listen-btn.live ~ .pulse-ring { animation: none; }
+}
+
+.hint { font-size: 12.5px; color: var(--ink-soft); text-align: center; margin: 0; }
+
+.readout {
+  width: 100%; background: var(--ground); border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+}
+.readout-label {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px;
+  color: var(--ink-soft); text-transform: uppercase; margin-bottom: 6px;
+}
+.readout-text {
+  font-family: var(--font-mono); font-size: 13.5px; line-height: 1.5;
+  min-height: 1.5em; word-break: break-word;
+}
+.readout-text.placeholder { color: var(--ink-soft); }
+.readout-text .cursor {
+  display: inline-block; width: 7px; height: 1em; background: var(--accent);
+  margin-left: 2px; vertical-align: text-bottom; animation: blink 1s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .readout-text .cursor { animation: none; } }
+
+.chips { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; }
+.chip {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.3px;
+  background: transparent; color: var(--ink-soft); border: 1px dashed var(--panel-border);
+  border-radius: 999px; padding: 6px 11px; cursor: pointer; transition: all 0.15s;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.fallback-input {
+  width: 100%; font-family: var(--font-mono); font-size: 13px;
+  background: var(--ground); color: var(--ink); border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm); padding: 10px 12px;
+}
+.fallback-input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fallback-input::placeholder { color: var(--ink-soft); }
+
+/* ---------- Results panel ---------- */
+.results-list { display: flex; flex-direction: column; gap: 10px; }
+.record {
+  background: var(--panel); border: 1px solid var(--panel-border);
+  border-left: 3px solid var(--strata);
+  border-radius: var(--radius-sm); padding: 14px 16px;
+  display: grid; grid-template-columns: auto 1fr auto; gap: 4px 16px;
+  align-items: baseline; box-shadow: var(--shadow);
+  animation: rise 0.25s ease-out both;
+}
+.record:first-child { border-left-color: var(--accent); }
+@keyframes rise { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .record { animation: none; } }
+
+.record .code {
+  font-family: var(--font-mono); font-size: 12.5px; font-weight: 600;
+  color: var(--strata); letter-spacing: 0.4px; grid-column: 1; grid-row: 1;
+}
+.record:first-child .code { color: var(--accent); }
+.record .location {
+  font-family: var(--font-display); font-weight: 700; font-size: 15.5px;
+  letter-spacing: 0.2px; grid-column: 2; grid-row: 1;
+}
+.record .gauge {
+  grid-column: 3; grid-row: 1 / 3; align-self: center;
+  display: flex; gap: 2.5px;
+}
+.record .gauge i {
+  width: 5px; height: 16px; background: var(--panel-border); border-radius: 1px;
+}
+.record .gauge i.on { background: var(--confidence); }
+.record .desc {
+  grid-column: 1 / 3; grid-row: 2; font-size: 13.5px; color: var(--ink-soft); line-height: 1.5;
+}
+.record .tags {
+  grid-column: 1 / 3; grid-row: 3; display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px;
+}
+.record .tags span {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.5px;
+  color: var(--ink-soft); background: var(--ground); border: 1px solid var(--panel-border);
+  padding: 2px 6px; border-radius: var(--radius-sm); text-transform: uppercase;
+}
+.record .tags mark {
+  background: transparent; color: var(--accent); font-weight: 600;
+}
+
+.empty-state {
+  border: 1px dashed var(--panel-border); border-radius: var(--radius-sm);
+  padding: 32px 20px; text-align: center; color: var(--ink-soft); font-size: 13px;
+}
+.empty-state strong { display: block; color: var(--ink); font-size: 14px; margin-bottom: 6px; font-family: var(--font-display); }
+
+.footnote {
+  margin-top: 20px; font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--ink-soft); text-align: center; letter-spacing: 0.4px;
+}
+</style>
+</head>
+<body>
+<canvas id="topoCanvas" aria-hidden="true"></canvas>
+<div class="app">
+
+  <header class="masthead">
+    <div class="wordmark">
+      <span class="mark">SH</span>
+      <div class="wordmark-text">
+        <span class="name">SPERLING HANSEN</span>
+        <span class="tagline">Geotechnical &amp; Environmental Engineering</span>
+      </div>
+    </div>
+    <div class="status-pill" id="statusPill">
+      <span class="dot"></span><span id="statusText">READY</span>
+    </div>
+  </header>
+
+  <main class="console">
+    <section class="input-panel">
+      <div class="eyebrow">Voice Lookup</div>
+
+      <div class="dial-wrap">
+        <button class="listen-btn" id="listenBtn" aria-pressed="false" aria-label="Start voice lookup">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+            <line x1="12" y1="18" x2="12" y2="22"/>
+            <line x1="8" y1="22" x2="16" y2="22"/>
+          </svg>
+        </button>
+        <div class="pulse-ring"></div>
+      </div>
+
+      <p class="hint" id="hintText">Say a landfill name, location, or keyword</p>
+
+      <div class="readout">
+        <div class="readout-label">Transcript</div>
+        <div class="readout-text placeholder" id="transcriptText">Waiting for input…</div>
+      </div>
+
+      <div class="chips" id="chips"></div>
+
+      <input class="fallback-input" id="fallbackInput" type="text" placeholder="Or type it here…" autocomplete="off" />
+    </section>
+
+    <section class="results-panel">
+      <div class="eyebrow">Project Log <span class="count" id="resultCount">18 on file</span></div>
+      <div class="results-list" id="resultsList"></div>
+    </section>
+  </main>
+
+  <div class="footnote">Demo dataset · 18 BC landfill engineering files · matches on location, scope keywords &amp; project stage</div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var PROJECTS = [
+    { code: "SHA-2024-001", location: "Merritt Landfill", description: "Closure plan and final cover system design.", tags: ["closure", "cover", "merritt"] },
+    { code: "SHA-2023-002", location: "Comox Valley Waste Management Centre", description: "Cell 4 expansion design and stormwater management plan.", tags: ["cell expansion", "stormwater", "comox"] },
+    { code: "SHA-2019-003", location: "Cache Creek Landfill", description: "Cell 3 liner system design and construction quality assurance.", tags: ["liner", "cqa", "cache creek"] },
+    { code: "SHA-2020-005", location: "Williams Lake Landfill", description: "Cell 3 expansion geotechnical assessment.", tags: ["cell expansion", "geotechnical", "williams lake"] },
+    { code: "SHA-2017-009", location: "Salmon Arm Landfill", description: "Leachate pond retrofit and lining upgrade.", tags: ["leachate", "retrofit", "salmon arm"] },
+    { code: "SHA-2020-011", location: "Hartland Landfill, Victoria", description: "Leachate collection system upgrade and gas well tie-ins.", tags: ["leachate", "gas collection", "hartland", "victoria"] },
+    { code: "SHA-2021-015", location: "Squamish Landfill (closed)", description: "Post-closure environmental monitoring program.", tags: ["post closure", "monitoring", "squamish"] },
+    { code: "SHA-2016-018", location: "Nanaimo Regional Landfill", description: "Final cover system and passive gas extraction network.", tags: ["cover", "gas extraction", "nanaimo"] },
+    { code: "SHA-2023-019", location: "Ashcroft Landfill", description: "Regional transfer station integration study.", tags: ["transfer station", "ashcroft"] },
+    { code: "SHA-2021-007", location: "Vancouver Landfill, Delta", description: "Gas collection and control system expansion.", tags: ["gas collection", "delta", "vancouver landfill"] },
+    { code: "SHA-2022-008", location: "Whistler Nesters Landfill", description: "Legacy cell remediation feasibility study.", tags: ["remediation", "legacy cell", "whistler"] },
+    { code: "SHA-2018-022", location: "Kamloops Mission Flats Landfill", description: "Closure and post-closure cover design.", tags: ["closure", "cover", "kamloops"] },
+    { code: "SHA-2022-014", location: "Glenmore Landfill, Kelowna", description: "Cell 5 development and stormwater management.", tags: ["cell expansion", "stormwater", "kelowna", "glenmore"] },
+    { code: "SHA-2020-026", location: "Campbell River Landfill", description: "Groundwater monitoring network expansion.", tags: ["groundwater", "monitoring", "campbell river"] },
+    { code: "SHA-2019-031", location: "Sechelt Landfill", description: "Cell 2 liner replacement program.", tags: ["liner", "cell", "sechelt"] },
+    { code: "SHA-2015-041", location: "Foothills Boulevard Landfill, Prince George", description: "Cell 6 design and construction oversight.", tags: ["cell expansion", "construction", "prince george"] },
+    { code: "SHA-2018-033", location: "Quesnel Landfill", description: "Leachate treatment system design.", tags: ["leachate", "treatment", "quesnel"] },
+    { code: "SHA-2017-027", location: "Chilliwack Landfill", description: "Gas-to-energy feasibility study.", tags: ["gas to energy", "feasibility", "chilliwack"] }
+  ];
+
+  var EXAMPLE_PHRASES = [
+    "Kamloops landfill cell expansion",
+    "leachate treatment upgrade",
+    "Hartland gas collection",
+    "Cache Creek liner design",
+    "post closure monitoring Squamish",
+    "groundwater monitoring Campbell River"
+  ];
+
+  var STOPWORDS = { "the":1,"a":1,"an":1,"and":1,"for":1,"of":1,"in":1,"at":1,"on":1,"to":1,"landfill":1 };
+
+  function tokenize(str) {
+    return str.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter(function (t) { return t.length > 1 && !STOPWORDS[t]; });
+  }
+
+  PROJECTS.forEach(function (p) {
+    p.haystack = (p.location + " " + p.description + " " + p.tags.join(" ")).toLowerCase();
+  });
+
+  function score(transcript) {
+    var tokens = tokenize(transcript);
+    if (!tokens.length) return PROJECTS.map(function (p) { return { project: p, score: 0, matched: [] }; });
+    return PROJECTS.map(function (p) {
+      var s = 0, matched = [];
+      tokens.forEach(function (t) {
+        if (p.haystack.indexOf(t) !== -1) {
+          var weight = p.location.toLowerCase().indexOf(t) !== -1 ? 2 : 1;
+          s += weight;
+          matched.push(t);
+        }
+      });
+      var phrase = transcript.toLowerCase().trim();
+      if (phrase.length > 3 && p.haystack.indexOf(phrase) !== -1) s += 3;
+      return { project: p, score: s, matched: matched };
+    }).sort(function (a, b) { return b.score - a.score; });
+  }
+
+  function highlight(text, matched) {
+    if (!matched.length) return text;
+    var out = text;
+    matched.forEach(function (m) {
+      var re = new RegExp("(" + m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + ")", "ig");
+      out = out.replace(re, "<mark>$1</mark>");
+    });
+    return out;
+  }
+
+  var resultsList = document.getElementById("resultsList");
+  var resultCount = document.getElementById("resultCount");
+  var transcriptText = document.getElementById("transcriptText");
+  var hintText = document.getElementById("hintText");
+
+  function renderEmpty() {
+    resultsList.innerHTML =
+      '<div class="empty-state"><strong>No file open</strong>Say a landfill name (e.g. "Kamloops") or a scope keyword (e.g. "leachate", "cell expansion").</div>';
+    resultCount.textContent = PROJECTS.length + " on file";
+  }
+
+  function renderResults(transcript) {
+    var ranked = score(transcript).filter(function (r) { return r.score > 0; }).slice(0, 6);
+    if (!ranked.length) { renderEmpty(); return; }
+    resultCount.textContent = ranked.length + " match" + (ranked.length === 1 ? "" : "es");
+    resultsList.innerHTML = ranked.map(function (r) {
+      var ticks = Math.max(1, Math.min(5, Math.round(r.score)));
+      var gauge = "";
+      for (var i = 1; i <= 5; i++) gauge += '<i class="' + (i <= ticks ? "on" : "") + '"></i>';
+      return (
+        '<div class="record">' +
+          '<div class="code">' + r.project.code + "</div>" +
+          '<div class="location">' + highlight(r.project.location, r.matched) + "</div>" +
+          '<div class="gauge" title="match confidence">' + gauge + "</div>" +
+          '<div class="desc">' + highlight(r.project.description, r.matched) + "</div>" +
+          '<div class="tags">' + r.project.tags.map(function (t) { return "<span>" + t + "</span>"; }).join("") + "</div>" +
+        "</div>"
+      );
+    }).join("");
+  }
+
+  function setTranscript(text) {
+    if (!text) {
+      transcriptText.textContent = "Waiting for input…";
+      transcriptText.classList.add("placeholder");
+      renderEmpty();
+      return;
+    }
+    transcriptText.classList.remove("placeholder");
+    transcriptText.textContent = text;
+    renderResults(text);
+  }
+
+  renderEmpty();
+
+  // ---- example chips (always work, no mic required) ----
+  var chipsEl = document.getElementById("chips");
+  EXAMPLE_PHRASES.forEach(function (phrase) {
+    var btn = document.createElement("button");
+    btn.className = "chip";
+    btn.type = "button";
+    btn.textContent = "“" + phrase + "”";
+    btn.addEventListener("click", function () {
+      fallbackInput.value = "";
+      setTranscript(phrase);
+    });
+    chipsEl.appendChild(btn);
+  });
+
+  // ---- typed fallback ----
+  var fallbackInput = document.getElementById("fallbackInput");
+  fallbackInput.addEventListener("input", function () {
+    setTranscript(fallbackInput.value);
+  });
+
+  // ---- speech recognition ----
+  var listenBtn = document.getElementById("listenBtn");
+  var statusPill = document.getElementById("statusPill");
+  var statusText = document.getElementById("statusText");
+  var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var recognizing = false;
+  var recognition = null;
+
+  function setLive(on) {
+    recognizing = on;
+    listenBtn.classList.toggle("live", on);
+    listenBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    statusPill.classList.toggle("live", on);
+    statusText.textContent = on ? "LISTENING" : "READY";
+  }
+
+  if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.lang = "en-CA";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onresult = function (event) {
+      var text = "";
+      for (var i = 0; i < event.results.length; i++) text += event.results[i][0].transcript;
+      setTranscript(text);
+    };
+    recognition.onerror = function () {
+      hintText.textContent = "Mic unavailable — try a phrase below instead";
+      setLive(false);
+    };
+    recognition.onend = function () { setLive(false); };
+
+    listenBtn.addEventListener("click", function () {
+      if (recognizing) { recognition.stop(); return; }
+      try {
+        recognition.start();
+        setLive(true);
+      } catch (e) {
+        hintText.textContent = "Mic unavailable — try a phrase below instead";
+      }
+    });
+  } else {
+    hintText.textContent = "Voice input needs Chrome or Edge — try a phrase below instead";
+    listenBtn.disabled = true;
+    listenBtn.style.opacity = "0.4";
+    listenBtn.style.cursor = "not-allowed";
+  }
+
+  // ---- ambient topographic contour background ----
+  var canvas = document.getElementById("topoCanvas");
+  var ctx = canvas.getContext("2d");
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function contourColor() {
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var forced = document.documentElement.getAttribute("data-theme");
+    if (forced === "dark") dark = true;
+    if (forced === "light") dark = false;
+    return dark ? "rgba(233,228,216,0.05)" : "rgba(27,36,34,0.045)";
+  }
+
+  function resize() {
+    canvas.width = window.innerWidth * devicePixelRatio;
+    canvas.height = window.innerHeight * devicePixelRatio;
+    canvas.style.width = window.innerWidth + "px";
+    canvas.style.height = window.innerHeight + "px";
+  }
+
+  function drawContours(t) {
+    resize();
+    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+    var w = window.innerWidth, h = window.innerHeight;
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = contourColor();
+    ctx.lineWidth = 1;
+    var lines = 14;
+    for (var i = 0; i < lines; i++) {
+      ctx.beginPath();
+      var baseY = (h / lines) * i;
+      for (var x = 0; x <= w; x += 12) {
+        var y = baseY + Math.sin((x * 0.006) + i * 0.7 + t) * (10 + i * 0.6);
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+  }
+
+  var t0 = 0;
+  function loop() {
+    t0 += 0.0015;
+    drawContours(t0);
+    if (!reduceMotion) requestAnimationFrame(loop);
+  }
+  drawContours(0);
+  if (!reduceMotion) requestAnimationFrame(loop);
+  window.addEventListener("resize", function () { drawContours(t0); });
+})();
+</script>
+</body>
+</html>
