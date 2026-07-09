@@ -1,0 +1,10 @@
+excel_path: "demo/mock_timesheet.xlsx"
+sheet_name: "TimeLog"
+staff_name: "Gabriel Betten"
+language: "en-CA"
+header_row: 14
+date_col: "F"
+code_col: "G"
+task_col: "I"
+hours_col: "J"
+staff_col: "E"

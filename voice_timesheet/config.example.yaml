@@ -1,0 +1,13 @@
+# Copy this to config.yaml and point it at your real file.
+excel_path: "Z:\\Shared\\Timesheets\\Gabriel Betten Timesheet.xlsx"  # mapped drive path
+sheet_name: "TimeLog"
+staff_name: "Gabriel Betten"   # used to disambiguate rows if the sheet has multiple staff
+language: "en-CA"
+
+# Column letters — only change these if your sheet's layout differs.
+header_row: 14
+date_col: "F"
+code_col: "G"
+task_col: "I"
+hours_col: "J"
+staff_col: "E"
