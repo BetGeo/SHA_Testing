@@ -1,0 +1,38 @@
+name: Build Voice Timesheet .exe
+
+on:
+  push:
+    branches:
+      - claude/voice-timesheet-app-k3opis
+    paths:
+      - "voice_timesheet/**"
+      - ".github/workflows/build-voice-timesheet-exe.yml"
+  workflow_dispatch: {}
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: voice_timesheet
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r build_requirements.txt
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller voice_timesheet.spec
+
+      - name: Upload .exe artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SperlingHansenVoiceTimesheet-windows
+          path: voice_timesheet/dist/SperlingHansenVoiceTimesheet.exe
+          if-no-files-found: error

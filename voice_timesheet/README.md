@@ -29,7 +29,19 @@ shows success (green) or a reason it couldn't write (red) — including
 the "already has an entry for that date" and "file is open elsewhere"
 cases described below.
 
-## Building a standalone .exe
+## Building a standalone .exe (via GitHub Actions — no Windows machine needed)
+
+Pushing to this branch (or running the workflow manually from the
+Actions tab) builds a real Windows `.exe` on a `windows-latest` GitHub
+runner and uploads it as a downloadable artifact — no local Python or
+PyInstaller required:
+
+1. GitHub → **Actions** tab → **Build Voice Timesheet .exe** → **Run workflow**
+   (or just push a change under `voice_timesheet/`).
+2. Once it finishes, open the run → **Artifacts** → download
+   `SperlingHansenVoiceTimesheet-windows` → unzip to get the `.exe`.
+
+## Building a standalone .exe locally
 
 The GUI can be packaged with PyInstaller into a single file that runs on
 a machine with no Python installed. **This has to be built on the same
