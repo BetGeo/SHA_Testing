@@ -18,6 +18,7 @@ from paths import app_dir
 from projects import Project, ProjectMatcher, load_projects
 from speech_input import listen_once
 from timesheet import TimesheetWriter
+from voice_flow import VoiceEntryFlow
 
 CONFIG_PATH = app_dir() / "config.yaml"
 
@@ -150,6 +151,7 @@ class VoiceTimesheetApp(tk.Tk):
         self.matcher = ProjectMatcher(load_projects())
         self.resolved_code: str | None = None
         self.resolved_name: str | None = None
+        self.mic_buttons: list[tk.Button] = []
 
         self._build_header()
         self._build_settings()
@@ -209,40 +211,53 @@ class VoiceTimesheetApp(tk.Tk):
         card = tk.Frame(self, bg=theme.CARD, highlightbackground=theme.BORDER, highlightthickness=1)
         card.pack(fill="both", expand=True, padx=16, pady=8)
 
+        self.voice_button = tk.Button(
+            card, text="\U0001F399  Start Voice Entry", font=theme.FONT_BUTTON,
+            bg=theme.FOREST, fg="white", relief="flat", height=2,
+            command=self._start_voice_flow,
+        )
+        self.voice_button.grid(row=0, column=0, columnspan=3, sticky="ew", padx=12, pady=(12, 4))
+        tk.Label(
+            card, text="Speaks each question, listens for your answer, and reads the "
+                       "whole entry back before saving — or fill it in manually below.",
+            font=(theme.FONT_FAMILY, 9), bg=theme.CARD, fg=theme.TEXT_MUTED, wraplength=460, justify="left",
+        ).grid(row=1, column=0, columnspan=3, sticky="w", padx=12, pady=(0, 10))
+
         # Date
         self.date_var = tk.StringVar(value=date.today().isoformat())
-        self._field_row(card, 0, "Date", self.date_var, mic=True)
+        self._field_row(card, 2, "Date", self.date_var, mic=True)
 
         # Project
         self.project_var = tk.StringVar()
-        self._field_row(card, 1, "Project / code", self.project_var, mic=True,
+        self._field_row(card, 3, "Project / code", self.project_var, mic=True,
                          on_change=self._on_project_text_changed)
         self.project_match_label = tk.Label(
             card, text="", font=(theme.FONT_FAMILY, 9, "italic"), bg=theme.CARD, fg=theme.TEXT_MUTED,
         )
-        self.project_match_label.grid(row=2, column=1, sticky="w", padx=12)
+        self.project_match_label.grid(row=4, column=1, sticky="w", padx=12)
 
         # Task
         tk.Label(card, text="What did you do", font=theme.FONT_LABEL, bg=theme.CARD, fg=theme.TEXT).grid(
-            row=3, column=0, sticky="nw", padx=12, pady=(16, 0)
+            row=5, column=0, sticky="nw", padx=12, pady=(16, 0)
         )
         self.task_text = tk.Text(card, font=theme.FONT_ENTRY, height=4, wrap="word",
                                   highlightbackground=theme.BORDER, highlightthickness=1)
-        self.task_text.grid(row=3, column=1, sticky="ew", padx=6, pady=(16, 0))
-        MicButton(card, self.cfg.get("language", "en-CA"), self._on_task_mic).grid(
-            row=3, column=2, sticky="n", padx=(0, 12), pady=(16, 0)
-        )
+        self.task_text.grid(row=5, column=1, sticky="ew", padx=6, pady=(16, 0))
+        task_mic = MicButton(card, self.cfg.get("language", "en-CA"), self._on_task_mic)
+        task_mic.grid(row=5, column=2, sticky="n", padx=(0, 12), pady=(16, 0))
+        self.mic_buttons.append(task_mic)
 
         # Hours
         self.hours_var = tk.StringVar()
-        self._field_row(card, 4, "Hours worked", self.hours_var, mic=True, pady=(16, 0))
+        self._field_row(card, 6, "Hours worked", self.hours_var, mic=True, pady=(16, 0))
 
         card.grid_columnconfigure(1, weight=1)
 
-        tk.Button(
+        self.write_button = tk.Button(
             card, text="Write to Timesheet", font=theme.FONT_BUTTON, bg=theme.LEAF, fg="white",
             relief="flat", height=2, command=self._write_entry,
-        ).grid(row=5, column=0, columnspan=3, sticky="ew", padx=12, pady=20)
+        )
+        self.write_button.grid(row=7, column=0, columnspan=3, sticky="ew", padx=12, pady=20)
 
     def _field_row(self, card, row, label, var, mic=False, on_change=None, pady=(8, 0)):
         tk.Label(card, text=label, font=theme.FONT_LABEL, bg=theme.CARD, fg=theme.TEXT).grid(
@@ -254,10 +269,12 @@ class VoiceTimesheetApp(tk.Tk):
         if on_change:
             var.trace_add("write", lambda *_: on_change())
         if mic:
-            MicButton(
+            mic_button = MicButton(
                 card, self.cfg.get("language", "en-CA"),
                 lambda text, error, v=var: self._fill_var(v, text, error),
-            ).grid(row=row, column=2, padx=(0, 12), pady=pady)
+            )
+            mic_button.grid(row=row, column=2, padx=(0, 12), pady=pady)
+            self.mic_buttons.append(mic_button)
         return entry
 
     def _build_status_bar(self):
@@ -325,6 +342,18 @@ class VoiceTimesheetApp(tk.Tk):
         ProjectPickerDialog(self, candidates, on_pick)
         return False
 
+    def _make_writer(self) -> TimesheetWriter:
+        return TimesheetWriter(
+            path=self.cfg["excel_path"],
+            sheet_name=self.cfg.get("sheet_name", "TimeLog"),
+            header_row=self.cfg.get("header_row", 14),
+            date_col=self.cfg.get("date_col", "F"),
+            code_col=self.cfg.get("code_col", "G"),
+            task_col=self.cfg.get("task_col", "I"),
+            hours_col=self.cfg.get("hours_col", "J"),
+            staff_col=self.cfg.get("staff_col", "E"),
+        )
+
     def _write_entry(self):
         if not self.cfg.get("excel_path"):
             self._set_status("Set the timesheet file path in Settings first.", ok=False)
@@ -353,16 +382,7 @@ class VoiceTimesheetApp(tk.Tk):
             self._set_status("Couldn't understand the hours.", ok=False)
             return
 
-        writer = TimesheetWriter(
-            path=self.cfg["excel_path"],
-            sheet_name=self.cfg.get("sheet_name", "TimeLog"),
-            header_row=self.cfg.get("header_row", 14),
-            date_col=self.cfg.get("date_col", "F"),
-            code_col=self.cfg.get("code_col", "G"),
-            task_col=self.cfg.get("task_col", "I"),
-            hours_col=self.cfg.get("hours_col", "J"),
-            staff_col=self.cfg.get("staff_col", "E"),
-        )
+        writer = self._make_writer()
         try:
             result = writer.write_entry(
                 entry_date=entry_date,
@@ -390,6 +410,87 @@ class VoiceTimesheetApp(tk.Tk):
     def _set_status(self, message: str, ok: bool):
         self.status_var.set(message)
         self.status_label.config(fg=theme.FOREST if ok else theme.ERROR)
+
+    # ---------- fully spoken entry flow ----------
+
+    def _start_voice_flow(self):
+        if not self.cfg.get("excel_path"):
+            self._set_status("Set the timesheet file path in Settings first.", ok=False)
+            return
+
+        self._set_form_enabled(False)
+        self._set_status("Voice entry in progress — listen for the prompts...", ok=True)
+
+        flow = VoiceEntryFlow(
+            matcher=self.matcher,
+            writer=self._make_writer(),
+            language=self.cfg.get("language", "en-CA"),
+            staff_name=self.cfg.get("staff_name") or None,
+            on_field_update=self._voice_field_update,
+            on_status=self._voice_status,
+            ask_user_to_pick=self._ask_user_to_pick_blocking,
+        )
+
+        def worker():
+            try:
+                flow.run()
+            finally:
+                self.after(0, lambda: self._set_form_enabled(True))
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def _set_form_enabled(self, enabled: bool):
+        state = "normal" if enabled else "disabled"
+        self.voice_button.config(state=state, bg=theme.FOREST if enabled else theme.FOREST_DARK)
+        self.write_button.config(state=state)
+        for btn in self.mic_buttons:
+            btn.config(state=state)
+
+    def _voice_field_update(self, field: str, text: str):
+        self.after(0, lambda: self._apply_voice_field_update(field, text))
+
+    def _apply_voice_field_update(self, field: str, text: str):
+        if field == "date":
+            self.date_var.set(text)
+        elif field == "project":
+            self.project_var.set(text)
+            self.project_match_label.config(text=f"✓ {text}")
+        elif field == "task":
+            self.task_text.delete("1.0", tk.END)
+            self.task_text.insert("1.0", text)
+        elif field == "hours":
+            self.hours_var.set(text)
+
+    def _voice_status(self, message: str, ok: bool):
+        def apply():
+            self._set_status(message, ok)
+            if ok:
+                self._clear_entry_form()
+
+        self.after(0, apply)
+
+    def _ask_user_to_pick_blocking(self, candidates: list[Project]) -> Project | None:
+        """Called from the voice-flow background thread. Shows the picker
+        dialog on the main thread and blocks the calling (background)
+        thread until a pick is made, the dialog is closed, or we time out."""
+        event = threading.Event()
+        result: dict[str, Project | None] = {"picked": None}
+        dlg_holder: dict[str, tk.Toplevel] = {}
+
+        def show_dialog():
+            def on_pick(p: Project):
+                result["picked"] = p
+                event.set()
+
+            dlg = ProjectPickerDialog(self, candidates, on_pick)
+            dlg_holder["dlg"] = dlg
+            dlg.protocol("WM_DELETE_WINDOW", lambda: (event.set(), dlg.destroy()))
+
+        self.after(0, show_dialog)
+        finished = event.wait(timeout=120)
+        if not finished:
+            self.after(0, lambda: dlg_holder.get("dlg") and dlg_holder["dlg"].destroy())
+        return result["picked"]
 
 
 def main():

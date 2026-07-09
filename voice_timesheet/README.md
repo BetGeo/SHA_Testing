@@ -21,13 +21,31 @@ path and your staff name in the Settings panel at the top, click **Save**.
 That writes `config.yaml` next to the app so you don't have to re-enter
 it next time.
 
-Then, per entry: fill in (or click the mic button 🎤 next to) Date,
-Project / code, task description, and hours, and press **Write to
-Timesheet**. If the project reference is ambiguous you'll get a
-pick-list dialog instead of a silent guess. A status line at the bottom
-shows success (green) or a reason it couldn't write (red) — including
-the "already has an entry for that date" and "file is open elsewhere"
-cases described below.
+Then, per entry, either:
+
+- Click **Start Voice Entry** for a fully hands-free, spoken conversation:
+  it asks for the date, then the project, then what you did, then the
+  hours — one question at a time, out loud — then **reads the whole
+  entry back to you** before saving. Say **"yes"** to save, **"no"** to
+  cancel, or say what to fix (**"change the hours"**, **"change the
+  project"**, ...) and it'll re-ask just that one field and read the
+  entry back again before saving. If a project name is ambiguous, it
+  first tries reading you the options and listening for which number —
+  and only falls back to the on-screen pick-list if that doesn't
+  resolve cleanly, so a noisy mic can't accidentally save the wrong
+  project.
+- Or fill in (or click the mic button 🎤 next to) Date, Project / code,
+  task description, and hours yourself, and press **Write to
+  Timesheet**.
+
+Either way, if the project reference is ambiguous you'll get a pick-list
+dialog instead of a silent guess, and a status line at the bottom shows
+success (green) or a reason it couldn't write (red) — including the
+"already has an entry for that date" and "file is open elsewhere" cases
+described below.
+
+Text-to-speech is offline (`pyttsx3`, using Windows' built-in voices) —
+only the speech *recognition* step needs internet.
 
 ## Building a standalone .exe (via GitHub Actions — no Windows machine needed)
 

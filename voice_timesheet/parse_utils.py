@@ -53,3 +53,51 @@ def parse_hours(text: str) -> float | None:
             return float(value)
 
     return None
+
+
+_ORDINAL_WORDS = {"first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5}
+
+_YES_WORDS = ("yes", "yeah", "yep", "yup", "correct", "confirm", "sounds good", "right", "affirmative", "save it", "that's right")
+_NO_WORDS = ("no", "nope", "nah", "cancel", "incorrect", "wrong", "negative", "don't save", "start over")
+
+
+def parse_choice(text: str, count: int) -> int | None:
+    """Map a spoken answer to a 0-based index among `count` options, or
+    None if it's unclear or the speaker declined all of them."""
+    text = text.strip().lower()
+    if "none" in text:
+        return None
+    for word, value in _ORDINAL_WORDS.items():
+        if word in text and 1 <= value <= count:
+            return value - 1
+    for word, value in _NUMBER_WORDS.items():
+        if isinstance(value, int) and 1 <= value <= count and re.search(rf"\b{word}\b", text):
+            return value - 1
+    m = re.search(r"\b([1-9])\b", text)
+    if m:
+        idx = int(m.group(1))
+        if 1 <= idx <= count:
+            return idx - 1
+    return None
+
+
+def parse_yes_no(text: str) -> bool | None:
+    text = text.strip().lower()
+    if any(w in text for w in _NO_WORDS):
+        return False
+    if any(w in text for w in _YES_WORDS):
+        return True
+    return None
+
+
+def parse_field_to_change(text: str) -> str | None:
+    text = text.strip().lower()
+    if "date" in text:
+        return "date"
+    if "project" in text or "code" in text:
+        return "project"
+    if "task" in text or "description" in text or "did" in text:
+        return "task"
+    if "hour" in text:
+        return "hours"
+    return None
