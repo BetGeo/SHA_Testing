@@ -6,7 +6,54 @@ sheet, at whatever mapped-drive path you point it to. It only ever edits
 the Date / Code / Task / Hours cells of the matching row; every formula
 column (Project Name, Billed, Week, ...) is left alone.
 
-## Setup
+There are two ways to run it: a terminal CLI (`main.py`) and a desktop
+GUI (`gui.py`), which is also the one packaged into a standalone `.exe`.
+
+## GUI (recommended)
+
+```bash
+pip install -r requirements.txt
+python gui.py
+```
+
+First run: paste or **Browse…** to your timesheet file's mapped-drive
+path and your staff name in the Settings panel at the top, click **Save**.
+That writes `config.yaml` next to the app so you don't have to re-enter
+it next time.
+
+Then, per entry: fill in (or click the mic button 🎤 next to) Date,
+Project / code, task description, and hours, and press **Write to
+Timesheet**. If the project reference is ambiguous you'll get a
+pick-list dialog instead of a silent guess. A status line at the bottom
+shows success (green) or a reason it couldn't write (red) — including
+the "already has an entry for that date" and "file is open elsewhere"
+cases described below.
+
+## Building a standalone .exe
+
+The GUI can be packaged with PyInstaller into a single file that runs on
+a machine with no Python installed. **This has to be built on the same
+OS you'll run it on** — build on Windows for a `.exe`, macOS for a Mac
+binary (PyInstaller does not cross-compile).
+
+```bash
+pip install -r build_requirements.txt
+pyinstaller voice_timesheet.spec
+```
+
+The result is `dist/SperlingHansenVoiceTimesheet(.exe)` — a single
+double-clickable file with the project code list baked in. It still
+reads/writes `config.yaml` next to itself, so Settings persist between
+runs without rebuilding.
+
+On Windows, if PyAudio fails to install for the mic (`pip install -r
+requirements.txt` errors on it), run:
+```bash
+pip install pipwin && pipwin install pyaudio
+```
+then re-run the PyInstaller build.
+
+## Setup (CLI)
 
 ```bash
 pip install -r requirements.txt
@@ -62,6 +109,15 @@ so you can try the tool end-to-end before pointing it at company data:
 python demo/build_mock_workbook.py
 python main.py --config demo/config.demo.yaml --text-mode
 ```
+
+For the GUI, run `python gui.py`, then point Settings at
+`demo/mock_timesheet.xlsx` instead of the real file.
+
+## Branding
+
+Colours/fonts live in `theme.py` — swap in real Sperling Hansen brand
+values there. The header currently uses a 🦌 emoji as a placeholder logo;
+drop in the real logo image when you have an asset.
 
 ## Known limitations (trial scope)
 

@@ -5,7 +5,9 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_PROJECTS_PATH = Path(__file__).parent / "data" / "project_codes.tsv"
+from paths import bundle_dir
+
+DEFAULT_PROJECTS_PATH = bundle_dir() / "data" / "project_codes.tsv"
 
 # Codes that are spoken as short words rather than project names/numbers.
 SHORT_CODES = {

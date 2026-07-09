@@ -1,6 +1,31 @@
 """Speech capture, with a typed fallback for testing without a microphone."""
 
 
+def listen_once(language: str = "en-CA", timeout: float = 8.0) -> str:
+    """Capture one utterance from the default microphone and return the transcript.
+
+    Raises RuntimeError with a human-readable message on any failure, so
+    callers (e.g. the GUI) can show it directly to the user.
+    """
+    import speech_recognition as sr  # optional dependency, imported lazily
+
+    recognizer = sr.Recognizer()
+    try:
+        mic = sr.Microphone()
+    except OSError as exc:
+        raise RuntimeError(f"No microphone available: {exc}") from exc
+
+    with mic as source:
+        recognizer.adjust_for_ambient_noise(source, duration=0.3)
+        audio = recognizer.listen(source, timeout=timeout)
+    try:
+        return recognizer.recognize_google(audio, language=language)
+    except sr.UnknownValueError:
+        raise RuntimeError("Didn't catch that — try again, or just type it.")
+    except sr.RequestError as exc:
+        raise RuntimeError(f"Speech service error: {exc}")
+
+
 class SpeechInput:
     """Wraps SpeechRecognition so the rest of the app doesn't care whether
     input came from a microphone or was typed for a dry run."""
